@@ -134,18 +134,22 @@ const getFromCloudStorage = function(config) {
   });
 };
 
-module.exports = function(categories, config = {}) {
+module.exports = function(categories = [], config = {}) {
   return new Promise(function(resolve, reject) {
-    Object.keys(process.env).forEach(function(element) {
-      const parts = splitOnce(element);
-      if (parts && parts[0] && parts[1]) {
-        if (categories.includes(parts[0])) {
-          const data = process.env[element];
-          if (!config.hasOwnProperty(parts[0])) config[parts[0]] = {};
-          if (!config[parts[0]].hasOwnProperty(parts[1])) config[parts[0]][parts[1]] = (isBase64(data)) ? Buffer.from(data, 'base64').toString("utf8") : data;
+
+    if (categories.length > 0) {
+      Object.keys(process.env).forEach(function(element) {
+        const parts = splitOnce(element);
+        if (parts && parts[0] && parts[1]) {
+          if (categories.includes(parts[0])) {
+            const data = process.env[element];
+            if (!config.hasOwnProperty(parts[0])) config[parts[0]] = {};
+            if (!config[parts[0]].hasOwnProperty(parts[1])) config[parts[0]][parts[1]] = (isBase64(data)) ? Buffer.from(data, 'base64').toString("utf8") : data;
+          }
         }
-      }
-    });
+      });
+    }
+
     if (config.hasOwnProperty('CONFIG') && config.CONFIG.hasOwnProperty('BUCKET_NAME')) {
       getFromCloudStorage(config)
         .then(updatedConfig => {
