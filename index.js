@@ -111,10 +111,12 @@ const getFromCloudStorage = function(config) {
     configStore.getFiles(bucketConfig)
       .then(files => {
         let filesToProcess = [];
-        files.forEach(file => {
-          if (file[0].metadata.contentType == "application/json") {
-            filesToProcess.push(processFile(file[0]));
-          }
+        files.forEach(filelist => {
+          filelist.forEach(file => {
+            if (file.metadata.contentType == "application/json") {
+              filesToProcess.push(processFile(file));
+            }
+          });
         });
         if (filesToProcess.length > 0) {
           Promise.all(filesToProcess)
