@@ -137,7 +137,7 @@ const getFromCloudStorage = function(config) {
 module.exports = function(categories = [], config = {}) {
   return new Promise(function(resolve, reject) {
 
-    if (categories.length > 0) {
+    if (categories && categories.length > 0) {
       Object.keys(process.env).forEach(function(element) {
         const parts = splitOnce(element);
         if (parts && parts[0] && parts[1]) {
