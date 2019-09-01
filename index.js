@@ -129,9 +129,21 @@ const getFromCloudStorage = function(config) {
   });
 };
 
+/**
+ * Stores the configuration to prevent multiple retrieval and generation
+ * @type {Object}
+ */
+let compiledConfig;
+
+/**
+ * Retrieves configuration from environment variables and Google Cloud Storage
+ * @param  {Array}  [categories=[]] Categories from environment variables
+ * @param  {Object} [config={}]     Existing configuration to merge with
+ * @return {Promise}                 Returns a promise which will resolve to the config object
+ */
 module.exports = function(categories = [], config = {}) {
   return new Promise(function(resolve, reject) {
-
+    if(compiledConfig) return resolve(compiledConfig);
     if (categories && categories.length > 0) {
       Object.keys(process.env).forEach(function(element) {
         const parts = splitOnce(element);
@@ -148,13 +160,15 @@ module.exports = function(categories = [], config = {}) {
     if (config.hasOwnProperty('CONFIG') && config.CONFIG.hasOwnProperty('BUCKET_NAME')) {
       getFromCloudStorage(config)
         .then(updatedConfig => {
-          return resolve(updatedConfig);
+          compiledConfig = updatedConfig;
+          return resolve(compiledConfig);
         })
         .catch(err => {
           return reject(err);
         });
     } else {
-      return resolve(config);
+      compiledConfig = config;
+      return resolve(compiledConfig);
     }
   });
 };
