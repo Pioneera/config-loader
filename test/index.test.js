@@ -11,7 +11,8 @@ const config = {
 };
 
 const configCategories = [
-  'TEST'
+  'TEST',
+  'CONFIG'
 ];
 
 it('should load the config', () => {

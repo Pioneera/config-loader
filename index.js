@@ -1,7 +1,9 @@
 "use strict";
 const debug = require("debug")("pioneera-config:loader");
-const https = require('https');
 const merge = require('deepmerge');
+const rax = require('retry-axios');
+const axios = require('axios');
+const uuidv4 = require('uuid/v4');
 
 const {
   Storage
@@ -19,42 +21,24 @@ const splitOnce = function(data, search = "_") {
   return;
 };
 
-const download = function(url) {
+const download = function(url, nonce) {
   return new Promise(function(resolve, reject) {
+
     const options = {
-      protocol: url.protocol,
-      host: url.host,
-      path: `${url.pathname}${url.search}`,
-      json: true,
+      method: 'GET',
       headers: {
-        "content-type": "application/json",
-        "accept": "application/json"
+        'Content-Type': 'application/json',
+        "accept": "application/json",
+        "x-goog-pioneera": nonce
       }
     };
 
-    const req = https.request(options, (res) => {
-
-      if (!(200 <= res.statusCode && res.statusCode <= 299)) {
-        console.error('statusCode:', res.statusCode);
-        console.error('headers:', res.headers);
-        return reject(new Error(`File unavailable (${res.statusCode}) ${url.pathname}`));
-      }
-
-      var data = '';
-      res.on('data', (d) => {
-        data += d;
+    axios.request(url, options)
+      .then(function(res) {
+        return resolve(res.data);
+      }).catch(function(err) {
+        return reject(err);
       });
-
-      res.on('end', function() {
-        return resolve(data);
-      });
-
-    });
-
-    req.on('error', (e) => {
-      return reject(e);
-    });
-    req.end();
 
   });
 };
@@ -68,24 +52,31 @@ const getFromCloudStorage = function(config) {
 
     const processFile = function(file) {
       return new Promise(function(resolve, reject) {
+
+        const nonce = uuidv4();
+
         const options = {
           action: 'read',
+          version: 'v2',
           contentType: 'application/json',
+          extensionHeaders: {
+            "x-goog-pioneera": nonce
+          },
           expires: Date.now() + 15 * 60 * 1000, // 15 minutes
         };
 
         file.getSignedUrl(options)
           .then(signedUrl => {
-            const url = new URL(signedUrl);
-            download(url)
+            if (Array.isArray(signedUrl) && signedUrl.length == 1) signedUrl = signedUrl[0];
+            download(signedUrl, nonce)
               .then(fileData => {
-                let data;
+                let data = fileData;
                 try {
                   data = JSON.parse(fileData);
                 } catch (e) {
                   //Nothing
                 }
-                if (data) mergeData(data);
+                if (typeof data == "object") mergeData(data);
                 return resolve();
               })
               .catch(err => {
