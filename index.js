@@ -9,6 +9,8 @@ const {
   Storage
 } = require('@google-cloud/storage');
 
+const interceptorId = rax.attach();
+
 const isBase64 = function(data) {
   if (!(data && data.length > 0)) return false;
   const base64 = /^([0-9a-zA-Z+/]{4})*(([0-9a-zA-Z+/]{2}==)|([0-9a-zA-Z+/]{3}=))?$/;
@@ -33,7 +35,7 @@ const download = function(url, nonce) {
       }
     };
 
-    axios.request(url, options)
+    axios(url, options)
       .then(function(res) {
         return resolve(res.data);
       }).catch(function(err) {
