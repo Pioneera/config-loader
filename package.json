@@ -12,9 +12,9 @@
     "npmpublish": "npm publish"
   },
   "engines": {
-    "node": "10.16.x",
-    "npm": "6.9.x",
-    "yarn": "1.17.x"
+    "node": "^10.0.0",
+    "npm": "^6.0.0",
+    "yarn": "^1.0.0"
   },
   "dependencies": {
     "@google-cloud/storage": "^3.2.1",
