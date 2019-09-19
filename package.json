@@ -1,6 +1,6 @@
 {
   "name": "@pioneera/config-loader",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "description": "Loads config from multiple sources",
   "main": "index.js",
   "repository": "git@github.com:Pioneera/config-loader.git",
