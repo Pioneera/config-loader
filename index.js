@@ -5,48 +5,57 @@ const rax = require('retry-axios');
 const axios = require('axios');
 const uuidv4 = require('uuid/v4');
 
-const {
-  Storage
-} = require('@google-cloud/storage');
+const { Storage } = require('@google-cloud/storage');
 
 const interceptorId = rax.attach();
 
 const isBase64 = function(data) {
   if (!(data && data.length > 0)) return false;
-  const base64 = /^([0-9a-zA-Z+/]{4})*(([0-9a-zA-Z+/]{2}==)|([0-9a-zA-Z+/]{3}=))?$/;
+  const base64 = /^(?:[0-9a-zA-Z+/]{4})*(?:(?:[0-9a-zA-Z+/]{2}==)|(?:[0-9a-zA-Z+/]{3}=))?$/u;
+
   return base64.test(data);
 };
 
 const splitOnce = function(data, search = "_") {
   const components = data.split(search);
   if (components.length > 1) return [components.shift(), components.join(search)];
-  return;
 };
 
 const download = function(url, nonce) {
   return new Promise(function(resolve, reject) {
 
     const options = {
-      method: 'GET',
-      headers: {
+      'headers': {
         'Content-Type': 'application/json',
-        "accept": "application/json",
-        "x-goog-pioneera": nonce
-      }
+        'accept': "application/json",
+        'x-goog-pioneera': nonce
+      },
+      'method': 'GET'
     };
 
     axios(url, options)
       .then(function(res) {
         return resolve(res.data);
-      }).catch(function(err) {
+      })
+      .catch(function(err) {
         return reject(err);
       });
 
   });
 };
 
-const getFromCloudStorage = function(config) {
+const getFromCloudStorage = function(suppliedConfig) {
   return new Promise(function(resolve, reject) {
+    debug(`Checking cloud storage.`);
+
+    let config = suppliedConfig;
+
+    const nonce = uuidv4();
+    const projectId = (config.CONFIG.PROJECT_ID) ? config.CONFIG.PROJECT_ID : null;
+    const keyFilename = (config.CONFIG.KEY_FILENAME) ? config.CONFIG.KEY_FILENAME : null;
+    const storage = new Storage({projectId, keyFilename});
+    const configStore = storage.bucket(config.CONFIG.BUCKET_NAME);
+    const bucketConfig = { 'versions': true };
 
     const mergeData = function(data) {
       config = merge(data, config);
@@ -54,8 +63,7 @@ const getFromCloudStorage = function(config) {
 
     const processFile = function(file) {
       return new Promise(function(resolve, reject) {
-
-        const nonce = uuidv4();
+        debug(`Retrieving ${file.metadata.bucket}/${file.metadata.name} from Cloud Storage`);
 
         const options = {
           action: 'read',
@@ -69,7 +77,7 @@ const getFromCloudStorage = function(config) {
 
         file.getSignedUrl(options)
           .then(signedUrl => {
-            if (Array.isArray(signedUrl) && signedUrl.length == 1) signedUrl = signedUrl[0];
+            if (Array.isArray(signedUrl) && signedUrl.length === 1) signedUrl = signedUrl[0];
             download(signedUrl, nonce)
               .then(fileData => {
                 let data = fileData;
@@ -91,22 +99,12 @@ const getFromCloudStorage = function(config) {
       });
     };
 
-    const projectId = (config.CONFIG.PROJECT_ID) ? config.CONFIG.PROJECT_ID : null;
-    const keyFilename = (config.CONFIG.KEY_FILENAME) ? config.CONFIG.KEY_FILENAME : null;
-    const storage = new Storage({
-      projectId,
-      keyFilename
-    });
-    const configStore = storage.bucket(config.CONFIG.BUCKET_NAME);
-    const bucketConfig = {
-      versions: true
-    };
     configStore.getFiles(bucketConfig)
       .then(files => {
         let filesToProcess = [];
         files.forEach(filelist => {
           filelist.forEach(file => {
-            if (file.metadata.contentType == "application/json") {
+            if (file.metadata.contentType === "application/json") {
               filesToProcess.push(processFile(file));
             }
           });
@@ -143,7 +141,7 @@ let compiledConfig;
  */
 module.exports = function(categories = [], config = {}) {
   return new Promise(function(resolve, reject) {
-    if(compiledConfig) return resolve(compiledConfig);
+    if (compiledConfig) return resolve(compiledConfig);
     if (categories && categories.length > 0) {
       Object.keys(process.env).forEach(function(element) {
         const parts = splitOnce(element);
@@ -161,6 +159,8 @@ module.exports = function(categories = [], config = {}) {
       getFromCloudStorage(config)
         .then(updatedConfig => {
           compiledConfig = updatedConfig;
+          debug(`Configuration loaded.`);
+
           return resolve(compiledConfig);
         })
         .catch(err => {
@@ -168,6 +168,8 @@ module.exports = function(categories = [], config = {}) {
         });
     } else {
       compiledConfig = config;
+      debug(`Configuration loaded.`);
+
       return resolve(compiledConfig);
     }
   });

@@ -3,9 +3,9 @@
 
 
 "@google-cloud/common@^2.1.1":
-  version "2.2.1"
-  resolved "https://registry.yarnpkg.com/@google-cloud/common/-/common-2.2.1.tgz#439db800ebd36f4881274ce088163cca59ebb68a"
-  integrity sha512-U8hNZZvs67dYQsBRYqZhyPwOEC135KEDzc4z169PF3FqBbkocHINdf410MmfrWg3Xvu82baXuZu0fq2WsHbG1A==
+  version "2.2.2"
+  resolved "https://registry.yarnpkg.com/@google-cloud/common/-/common-2.2.2.tgz#bac80e32f860cee64f02b6ab218264990e64c715"
+  integrity sha512-AgMdDgLeYlEG17tXtMCowE7mplm907pcugtfJYYAp06HNe9RDnunUIY5KMnn9yikYl7NXNofARC+hwG77Zsa4g==
   dependencies:
     "@google-cloud/projectify" "^1.0.0"
     "@google-cloud/promisify" "^1.0.0"

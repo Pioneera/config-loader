@@ -5,8 +5,9 @@ const assert = require('assert');
 const getConfig = require('../');
 
 const config = {
-  CONFIG: {
-    TEST: "AAA"
+  'CONFIG': {
+    'BUCKET_NAME': 'baxter-kms-dev',
+    'TEST': "AAA"
   }
 };
 
