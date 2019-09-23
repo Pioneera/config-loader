@@ -5,7 +5,9 @@ const rax = require('retry-axios');
 const axios = require('axios');
 const uuidv4 = require('uuid/v4');
 
-const { Storage } = require('@google-cloud/storage');
+const {
+  Storage
+} = require('@google-cloud/storage');
 
 const interceptorId = rax.attach();
 const encodedBase64 = /^(?:data\:)(?<contentType>\S*\/\S*);base64,(?<encodedData>.*)$/gi;
@@ -13,9 +15,9 @@ const encodedBase64 = /^(?:data\:)(?<contentType>\S*\/\S*);base64,(?<encodedData
 const convertIfBase64 = function(data) {
   if (!(data && data.length > 0)) return;
   const base64Parts = encodedBase64.exec(data);
-  if(!(base64Parts && base64Parts.groups && base64Parts.groups.contentType && base64Parts.groups.encodedData)) return data;
+  if (!(base64Parts && base64Parts.groups && base64Parts.groups.contentType && base64Parts.groups.encodedData)) return data;
   const decodedData = Buffer.from(base64Parts.groups.encodedData, 'base64');
-  if(base64Parts.groups.contentType.toLowerCase().startsWith('text')) return decodedData.toString("utf8");
+  if (base64Parts.groups.contentType.toLowerCase().startsWith('text')) return decodedData.toString("utf8");
   return decodedData;
 };
 
@@ -56,12 +58,17 @@ const getFromCloudStorage = function(suppliedConfig) {
     const nonce = uuidv4();
     const projectId = (config.config.project_id) ? config.config.project_id : null;
     const keyFilename = (config.config.key_filename) ? config.config.key_filename : null;
-    const storage = new Storage({projectId, keyFilename});
+    const storage = new Storage({
+      projectId,
+      keyFilename
+    });
     const configStore = storage.bucket(config.config.bucket_name);
-    const bucketConfig = { 'versions': true };
+    const bucketConfig = {
+      'versions': true
+    };
 
     const mergeData = function(data) {
-      config = merge(config, data);
+      config = merge(data, config);
     };
 
     const processFile = function(file) {
@@ -145,6 +152,20 @@ let compiledConfig;
 module.exports = function(categories = [], config = {}) {
   return new Promise(function(resolve, reject) {
     if (compiledConfig) return resolve(compiledConfig);
+
+    function postProcessConfig(obj) {
+      for (let key in obj) {
+        if (Object.prototype.hasOwnProperty.call(obj, key)) {
+          if (typeof obj[key] === "object") {
+            postProcessConfig(obj[key])
+          } else if (typeof obj[key] === "string") {
+            obj[key] = convertIfBase64(obj[key]);
+          }
+        }
+      }
+      return obj;
+    }
+
     if (categories && categories.length > 0) {
       Object.keys(process.env).forEach(function(element) {
         const parts = splitOnce(element);
@@ -154,7 +175,7 @@ module.exports = function(categories = [], config = {}) {
             const category = parts[0].toLowerCase();
             const subCategory = parts[1].toLowerCase();
             if (!config.hasOwnProperty(category)) config[category] = {};
-            if (!config[category].hasOwnProperty(subCategory)) config[category][subCategory] = convertIfBase64(data);
+            if (!config[category].hasOwnProperty(subCategory)) config[category][subCategory] = data;
           }
         }
       });
@@ -163,18 +184,16 @@ module.exports = function(categories = [], config = {}) {
     if (config.hasOwnProperty('config') && config.config.hasOwnProperty('bucket_name')) {
       getFromCloudStorage(config)
         .then(updatedConfig => {
-          compiledConfig = updatedConfig;
+          compiledConfig = postProcessConfig(updatedConfig);
           debug(`Configuration loaded.`);
-
           return resolve(compiledConfig);
         })
         .catch(err => {
           return reject(err);
         });
     } else {
-      compiledConfig = config;
+      compiledConfig = postProcessConfig(config);
       debug(`Configuration loaded.`);
-
       return resolve(compiledConfig);
     }
   });
