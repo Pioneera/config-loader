@@ -51,10 +51,10 @@ const getFromCloudStorage = function(suppliedConfig) {
     let config = suppliedConfig;
 
     const nonce = uuidv4();
-    const projectId = (config.CONFIG.PROJECT_ID) ? config.CONFIG.PROJECT_ID : null;
-    const keyFilename = (config.CONFIG.KEY_FILENAME) ? config.CONFIG.KEY_FILENAME : null;
+    const projectId = (config.config.project_id) ? config.config.project_id : null;
+    const keyFilename = (config.config.key_filename) ? config.config.key_filename : null;
     const storage = new Storage({projectId, keyFilename});
-    const configStore = storage.bucket(config.CONFIG.BUCKET_NAME);
+    const configStore = storage.bucket(config.config.bucket_name);
     const bucketConfig = { 'versions': true };
 
     const mergeData = function(data) {
@@ -148,14 +148,16 @@ module.exports = function(categories = [], config = {}) {
         if (parts && parts[0] && parts[1]) {
           if (categories.includes(parts[0])) {
             const data = process.env[element];
-            if (!config.hasOwnProperty(parts[0])) config[parts[0]] = {};
-            if (!config[parts[0]].hasOwnProperty(parts[1])) config[parts[0]][parts[1]] = (isBase64(data)) ? Buffer.from(data, 'base64').toString("utf8") : data;
+            const category = parts[0].toLowerCase();
+            const subCategory = parts[1].toLowerCase();
+            if (!config.hasOwnProperty(category)) config[category] = {};
+            if (!config[category].hasOwnProperty(subCategory)) config[category][subCategory] = (isBase64(data)) ? Buffer.from(data, 'base64').toString("utf8") : data;
           }
         }
       });
     }
 
-    if (config.hasOwnProperty('CONFIG') && config.CONFIG.hasOwnProperty('BUCKET_NAME')) {
+    if (config.hasOwnProperty('config') && config.config.hasOwnProperty('bucket_name')) {
       getFromCloudStorage(config)
         .then(updatedConfig => {
           compiledConfig = updatedConfig;
