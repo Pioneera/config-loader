@@ -8,12 +8,15 @@ const uuidv4 = require('uuid/v4');
 const { Storage } = require('@google-cloud/storage');
 
 const interceptorId = rax.attach();
+const encodedBase64 = /^(?:data\:)(?<contentType>\S*\/\S*);base64,(?<encodedData>.*)$/gi;
 
-const isBase64 = function(data) {
-  if (!(data && data.length > 0)) return false;
-  const base64 = /^(?:[0-9a-zA-Z+/]{4})*(?:(?:[0-9a-zA-Z+/]{2}==)|(?:[0-9a-zA-Z+/]{3}=))?$/u;
-
-  return base64.test(data);
+const convertIfBase64 = function(data) {
+  if (!(data && data.length > 0)) return;
+  const base64Parts = encodedBase64.exec(data);
+  if(!(base64Parts && base64Parts.groups && base64Parts.groups.contentType && base64Parts.groups.encodedData)) return data;
+  const decodedData = Buffer.from(base64Parts.groups.encodedData, 'base64');
+  if(base64Parts.groups.contentType.toLowerCase().startsWith('text')) return decodedData.toString("utf8");
+  return decodedData;
 };
 
 const splitOnce = function(data, search = "_") {
@@ -58,7 +61,7 @@ const getFromCloudStorage = function(suppliedConfig) {
     const bucketConfig = { 'versions': true };
 
     const mergeData = function(data) {
-      config = merge(data, config);
+      config = merge(config, data);
     };
 
     const processFile = function(file) {
@@ -151,7 +154,7 @@ module.exports = function(categories = [], config = {}) {
             const category = parts[0].toLowerCase();
             const subCategory = parts[1].toLowerCase();
             if (!config.hasOwnProperty(category)) config[category] = {};
-            if (!config[category].hasOwnProperty(subCategory)) config[category][subCategory] = (isBase64(data)) ? Buffer.from(data, 'base64').toString("utf8") : data;
+            if (!config[category].hasOwnProperty(subCategory)) config[category][subCategory] = convertIfBase64(data);
           }
         }
       });
