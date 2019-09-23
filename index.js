@@ -1,6 +1,6 @@
 "use strict";
 const debug = require("debug")("pioneera-config:loader");
-const merge = require('deepmerge');
+const merge = require('merge-deep');
 const rax = require('retry-axios');
 const axios = require('axios');
 const uuidv4 = require('uuid/v4');
@@ -53,22 +53,18 @@ const getFromCloudStorage = function(suppliedConfig) {
   return new Promise(function(resolve, reject) {
     debug(`Checking cloud storage.`);
 
-    let config = suppliedConfig;
+    let config = {};
 
     const nonce = uuidv4();
-    const projectId = (config.config.project_id) ? config.config.project_id : null;
-    const keyFilename = (config.config.key_filename) ? config.config.key_filename : null;
+    const projectId = (suppliedConfig.config.project_id) ? suppliedConfig.config.project_id : null;
+    const keyFilename = (suppliedConfig.config.key_filename) ? suppliedConfig.config.key_filename : null;
     const storage = new Storage({
       projectId,
       keyFilename
     });
-    const configStore = storage.bucket(config.config.bucket_name);
+    const configStore = storage.bucket(suppliedConfig.config.bucket_name);
     const bucketConfig = {
       'versions': true
-    };
-
-    const mergeData = function(data) {
-      config = merge(data, config);
     };
 
     const processFile = function(file) {
@@ -96,7 +92,7 @@ const getFromCloudStorage = function(suppliedConfig) {
                 } catch (e) {
                   //Nothing
                 }
-                if (typeof data == "object") mergeData(data);
+                if (typeof data == "object") config = merge(data, config);
                 return resolve();
               })
               .catch(err => {
@@ -184,8 +180,7 @@ module.exports = function(categories = [], config = {}) {
     if (config.hasOwnProperty('config') && config.config.hasOwnProperty('bucket_name')) {
       getFromCloudStorage(config)
         .then(updatedConfig => {
-          compiledConfig = postProcessConfig(updatedConfig);
-          debug(`Configuration loaded.`);
+          compiledConfig = postProcessConfig(merge(updatedConfig, config));
           return resolve(compiledConfig);
         })
         .catch(err => {
