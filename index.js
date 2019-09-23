@@ -1,6 +1,6 @@
 "use strict";
 const debug = require("debug")("pioneera-config:loader");
-const merge = require('merge-deep');
+const merge = require('deepmerge');
 const rax = require('retry-axios');
 const axios = require('axios');
 const uuidv4 = require('uuid/v4');
@@ -107,24 +107,31 @@ const getFromCloudStorage = function(suppliedConfig) {
 
     configStore.getFiles(bucketConfig)
       .then(files => {
-        let filesToProcess = [];
-        files.forEach(filelist => {
-          filelist.forEach(file => {
+        let filesToProcessCount = 0;
+        let filesProcessedCount = 0;
+        for (let d = 0, dlen = files.length; d < dlen; d++) {
+          const filelist = files[d];
+          filesToProcessCount += filelist.length;
+          for (let f = 0, flen = filelist.length; f < flen; f++) {
+            const file = filelist[f];
             if (file.metadata.contentType === "application/json") {
-              filesToProcess.push(processFile(file));
+              processFile(file)
+                .then(() => {
+                  filesProcessedCount++;
+                  if (filesProcessedCount >= filesToProcessCount) {
+                    return resolve(config);
+                  }
+                })
+                .catch((err) => {
+                  return reject(err);
+                });
+            } else {
+              filesProcessedCount++;
             }
-          });
-        });
-        if (filesToProcess.length > 0) {
-          Promise.all(filesToProcess)
-            .then(() => {
+            if (filesProcessedCount >= filesToProcessCount) {
               return resolve(config);
-            })
-            .catch(err => {
-              return reject(err);
-            });
-        } else {
-          return resolve(config);
+            }
+          }
         }
       })
       .catch(err => {
